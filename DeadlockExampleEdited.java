@@ -1,6 +1,5 @@
 package edited;
 
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class DeadlockExampleEdited {
@@ -11,8 +10,8 @@ public class DeadlockExampleEdited {
 
     private final Resource resourceA = new Resource();
     private final Resource resourceB = new Resource();
-    private final Lock lockA = new ReentrantLock();
-    private final Lock lockB = new ReentrantLock();
+    private final ReentrantLock lockA = new ReentrantLock();
+    private final ReentrantLock lockB = new ReentrantLock();
 
     public void execute() {
         Thread thread1 = new Thread(() -> {
@@ -31,36 +30,34 @@ public class DeadlockExampleEdited {
         thread2.start();
     }
 
-    private synchronized void acquireResourcesAndWork(Lock firstLock, Lock secondLock, Resource firstResource, Resource secondResource, String threadName) {
-        Boolean firstLockAcquired = false;
-        Boolean secondLockAcquired = false;
+    private synchronized void acquireResourcesAndWork(ReentrantLock firstLock, ReentrantLock secondLock, Resource firstResource, Resource secondResource, String threadName) {
+        firstLock.lock();
+        System.out.println(threadName + " locked " + firstResource);
+
         try {
             // Имитация работы с ресурсом
             Thread.sleep(100);
-            while (!firstLock.tryLock()) {
-                wait();
-            }
-            firstLockAcquired = true;
-            System.out.println(threadName + " locked " + firstResource);
-            // Имитация работы с ресурсом
-            Thread.sleep(100);
-            while (!secondLock.tryLock()) {
-                wait();
-            }
-            secondLockAcquired = true;
+
+            secondLock.lock();
             System.out.println(threadName + " locked " + secondResource);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } finally {
-            if (firstLockAcquired) {
-                firstLock.unlock();
+
+            try {
+                // Имитация работы с ресурсом
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                if (firstLock.isHeldByCurrentThread()) {
+                    firstLock.unlock();
+                }
                 System.out.println(threadName + " unlocked " + firstResource);
-            }
-            if (secondLockAcquired) {
-                secondLock.unlock();
+                if (secondLock.isHeldByCurrentThread()) {
+                    secondLock.unlock();
+                }
                 System.out.println(threadName + " unlocked " + secondResource);
             }
-            notify();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
